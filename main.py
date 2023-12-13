@@ -5,7 +5,8 @@ from lcd_api import LcdApi
 from machine import PWM, Pin, SoftI2C
 from microWebSrv import MicroWebSrv
 from time import sleep
-import json
+from umqtt.simple import MQTTClient
+import network
 
 # Set up variables
 prev_temp = 1
@@ -124,9 +125,21 @@ def _closed_callback(websocket):
     print("WebSocket closed")
 
 
+# Method for sending sensor data to MQTT server regularly
+def send_data_mqtt():
+    mqtt_server = "broker.hivemq.com";
+    client = MQTTClient("group7_dht22_pub", mqtt_server, port=1883)
+    client.connect()
+    while True:
+        sleep(10)
+        client.publish(b"iot_group7_temp", bytes(str(new_temp), 'utf-8'))
+        client.publish(b"iot_group7_humid", bytes(str(new_humid), 'utf-8'))
+
+
 # Initiate threads
 # be_quiet()
 start_new_thread(update_sensors, ())
+start_new_thread(send_data_mqtt, ())
 # Initiate web server
 # TCP port 80 and files in /www
 mws = MicroWebSrv(webPath="/www")
