@@ -68,7 +68,7 @@ def update_sensors():
         prev_humid = new_humid
         new_temp, new_humid = read_dht22()
         if new_temp != prev_temp or new_humid != prev_humid:
-            start_new_thread(print_lcd, (f"{new_temp}, {new_humid}",))
+            start_new_thread(print_lcd, (f"{new_temp}'C\n{new_humid} %", ))
         # if new_temp > max_temp and new_humid > max_humid:
         #     play_tone(1000)
         # elif new_temp > max_temp:
