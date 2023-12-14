@@ -69,7 +69,7 @@ def send_data_socket():
         data = {"temp": new_temp, "humid": new_humid}
         data_json = dumps(data)
         sock.send(data_json.encode("utf-8"))
-        sleep(3)
+        sleep(2)
 
 
 # Update sensors in an interval
@@ -104,7 +104,7 @@ def update_sensors():
             max(min(65535 * (1 - humid_percentage), 65535), 0),
             max(min(65535 * humid_percentage, 65535), 0),
         )
-        sleep(3)
+        sleep(2)
 
 
 # Method for sending sensor data to MQTT server regularly
