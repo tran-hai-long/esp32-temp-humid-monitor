@@ -1,8 +1,8 @@
 from _thread import start_new_thread
 from microWebSrv import MicroWebSrv
 from time import sleep
-from umqtt.simple import MQTTClient
-import json
+from json import dumps, loads
+from socket import socket, AF_INET, SOCK_STREAM
 
 # Set up variables
 prev_temp = 1
@@ -11,6 +11,28 @@ prev_humid = 0
 new_humid = 0
 max_temp = 40
 max_humid = 50
+
+
+def receive_data_socket():
+    global prev_temp, new_temp, prev_humid, new_humid
+    sock = socket(AF_INET, SOCK_STREAM)
+    server_ip = "192.168.92.91"
+    port = 9999
+    sock.bind((server_ip, port))
+    sock.listen(0)
+    print(f"Listening on {server_ip}:{port}")
+    # accept incoming connections
+    client_socket, client_address = sock.accept()
+    print(f"Accepted connection from {client_address[0]}:{client_address[1]}")
+    # receive data from the client
+    while True:
+        request = client_socket.recv(256)
+        request = request.decode("utf-8")
+        data = loads(request)
+        prev_temp = new_temp
+        prev_humid = new_humid
+        new_temp = data["temp"]
+        new_humid = data["humid"]
 
 
 # websocket methods
@@ -25,10 +47,10 @@ def _accept_websocket_callback(websocket, httpClient):
         while True:
             if new_temp != prev_temp or new_humid != prev_humid:
                 data = {"temp": new_temp, "humid": new_humid}
-                websocket.SendText(json.dumps(data))
+                websocket.SendText(dumps(data))
                 sleep(3)
 
-    start_new_thread(send_dht_data, ())
+    send_dht_data()
 
 
 # Receive command from web visitors
@@ -44,21 +66,11 @@ def _closed_callback(websocket):
     print("WebSocket closed")
 
 
-# Method for sending sensor data to MQTT server regularly
-def send_data_mqtt():
-    mqtt_server = "broker.hivemq.com"
-    client = MQTTClient("group7_dht22_pub", mqtt_server, port=1883)
-    client.connect()
-    while True:
-        sleep(10)
-        client.publish(b"iot_group7_temp", bytes(str(new_temp), "utf-8"))
-        client.publish(b"iot_group7_humid", bytes(str(new_humid), "utf-8"))
-
-
 # Initiate threads
-start_new_thread(send_data_mqtt, ())
+start_new_thread(receive_data_socket, ())
 # Initiate web server
 # TCP port 80 and files in /www
 mws = MicroWebSrv(webPath="/www")
+mws.MaxWebSocketRecvLen = 256
 mws.AcceptWebSocketCallback = _accept_websocket_callback
 mws.Start(threaded=True)
