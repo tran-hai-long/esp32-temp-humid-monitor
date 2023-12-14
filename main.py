@@ -48,7 +48,7 @@ def _accept_websocket_callback(websocket, httpClient):
             if new_temp != prev_temp or new_humid != prev_humid:
                 data = {"temp": new_temp, "humid": new_humid}
                 websocket.SendText(dumps(data))
-                sleep(3)
+                sleep(2)
 
     send_dht_data()
 
