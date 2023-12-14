@@ -4,7 +4,7 @@ from i2c_lcd import I2cLcd
 from lcd_api import LcdApi
 from machine import PWM, Pin, SoftI2C
 from time import sleep
-import json
+from umqtt.simple import MQTTClient
 
 # Set up variables
 prev_temp = 1
@@ -92,6 +92,21 @@ def update_sensors():
         sleep(3)
 
 
+# Method for sending sensor data to MQTT server regularly
+def send_data_mqtt():
+    mqtt_server = "broker.hivemq.com"
+    client = MQTTClient("group7_dht22_pub", mqtt_server, port=1883)
+    client.connect()
+    while True:
+        sleep(10)
+        try:
+            client.publish(b"iot_group7_temp", bytes(str(new_temp), "utf-8"))
+            client.publish(b"iot_group7_humid", bytes(str(new_humid), "utf-8"))
+        except:
+            print("Can not send data to MQTT server")
+
+
 # Initiate threads
 # be_quiet()
 start_new_thread(update_sensors, ())
+start_new_thread(send_data_mqtt, ())
