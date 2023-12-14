@@ -1,9 +1,11 @@
 from _thread import start_new_thread
 from dht import DHT22
+from json import dumps
 from i2c_lcd import I2cLcd
 from lcd_api import LcdApi
 from machine import PWM, Pin, SoftI2C
 from time import sleep
+from socket import socket, AF_INET, SOCK_STREAM
 from umqtt.simple import MQTTClient
 
 # Set up variables
@@ -55,6 +57,19 @@ def set_led_color(led, red, green, blue):
 # # Stop buzzer
 # def be_quiet():
 #     buzzer.duty_u16(0)
+
+
+def send_data_socket():
+    sock = socket(AF_INET, SOCK_STREAM)
+    server_ip = "192.168.92.91"
+    server_port = 9999
+    sock.connect((server_ip, server_port))
+    while True:
+        # send sensor data to the server
+        data = {"temp": new_temp, "humid": new_humid}
+        data_json = dumps(data)
+        sock.send(data_json.encode("utf-8"))
+        sleep(3)
 
 
 # Update sensors in an interval
@@ -109,4 +124,5 @@ def send_data_mqtt():
 # Initiate threads
 # be_quiet()
 start_new_thread(update_sensors, ())
+start_new_thread(send_data_socket, ())
 start_new_thread(send_data_mqtt, ())
