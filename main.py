@@ -9,7 +9,9 @@ prev_temp = 1
 new_temp = 1
 prev_humid = 0
 new_humid = 0
+min_temp = 0
 max_temp = 40
+min_humid = 0
 max_humid = 50
 # variable to track min max changes (sent from web visitors)
 update_min_max = False
@@ -51,7 +53,9 @@ def _accept_websocket_callback(websocket, httpClient):
                 data = {
                     "temp": new_temp,
                     "humid": new_humid,
+                    "min_temp": min_temp,
                     "max_temp": max_temp,
+                    "min_humid": min_humid,
                     "max_humid": max_humid,
                 }
                 websocket.SendText(dumps(data))
@@ -62,13 +66,19 @@ def _accept_websocket_callback(websocket, httpClient):
 
 # Receive command from web visitors
 def _recv_text_callback(websocket, message):
-    global max_temp, max_humid
+    global min_temp, max_temp, min_humid, max_humid
     print(f"WebSocket message: {message}")
     client_message = loads(message)
+    if "min_temp" in client_message:
+        min_temp = float(client_message["min_temp"])
+        update_min_max = True
     if "max_temp" in client_message:
         max_temp = float(client_message["max_temp"])
         update_min_max = True
-    elif "max_humid" in client_message:
+    if "min_humid" in client_message:
+        min_humid = float(client_message["min_humid"])
+        update_min_max = True
+    if "max_humid" in client_message:
         max_humid = float(client_message["max_humid"])
         update_min_max = True
 
