@@ -18,18 +18,39 @@
         }
     </style>
     <script>
-        let Socket;
+        // Initiate socket
+        let socket;
         function init() {
-            Socket = new WebSocket('ws://' + window.location.hostname + ':80/');
-            Socket.onmessage = function (event) {
+            socket = new WebSocket('ws://' + window.location.hostname + ':80/');
+            socket.onmessage = function (event) {
                 processCommand(event);
             };
+            // Send commands to change min-max temp and humid to ESP32 web server
+            document.getElementById('button-max-temp').onclick = function () {
+                let maxTemp = document.getElementById('input-max-temp').value;
+                if (maxTemp != null && maxTemp != "") {
+                    let data = new Object();
+                    data.max_temp = maxTemp;
+                    socket.send(JSON.stringify(data));
+                }
+            };
+            document.getElementById('button-max-humid').onclick = function () {
+                let maxHumid = document.getElementById('input-max-humid').value;
+                if (maxHumid != null && maxHumid != "") {
+                    let data = new Object();
+                    data.max_humid = maxHumid;
+                    socket.send(JSON.stringify(data));
+                }
+            };
         }
+        // Receive sensor data from ESP32 server and display on web page
         function processCommand(event) {
             var json_data = JSON.parse(event.data);
             console.log(json_data)
             document.getElementById('temp').innerHTML = json_data.temp;
             document.getElementById('humid').innerHTML = json_data.humid;
+            document.getElementById('max-temp').innerHTML = json_data.max_temp;
+            document.getElementById('max-humid').innerHTML = json_data.max_humid;
         }
         window.onload = function (event) {
             init();
@@ -49,6 +70,20 @@
         <span id="humid">--.--</span>
         <span>%</span>
     </p>
+    <p>
+        <span>Max temperature: </span>
+        <span id="max-temp">--.--</span>
+        <span>&deg;C</span>
+    </p>
+    <input id="input-max-temp" type="number" placeholder="max temperature">
+    <button id="button-max-temp">Set</button>
+    <p>
+        <span>Max humidity: </span>
+        <span id="max-humid">--.--</span>
+        <span>%</span>
+    </p>
+    <input id="input-max-humid" type="number" placeholder="max humidity">
+    <button id="button-max-humid">Set</button>
 </body>
 
 </html>

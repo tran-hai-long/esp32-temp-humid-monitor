@@ -11,8 +11,11 @@ prev_humid = 0
 new_humid = 0
 max_temp = 40
 max_humid = 50
+# variable to track min max changes (sent from web visitors)
+update_min_max = False
 
 
+# Receive sensor data from slave ESP32
 def receive_data_socket():
     global prev_temp, new_temp, prev_humid, new_humid
     sock = socket(AF_INET, SOCK_STREAM)
@@ -35,31 +38,39 @@ def receive_data_socket():
         new_humid = data["humid"]
 
 
-# websocket methods
+# Websocket methods
 def _accept_websocket_callback(websocket, httpClient):
     print("WebSocket accepted")
     websocket.RecvTextCallback = _recv_text_callback
-    websocket.RecvBinaryCallback = _recv_binary_callback
     websocket.ClosedCallback = _closed_callback
 
     # Send temperature and humidity data to web visitors
     def send_dht_data():
         while True:
             if new_temp != prev_temp or new_humid != prev_humid:
-                data = {"temp": new_temp, "humid": new_humid}
+                data = {
+                    "temp": new_temp,
+                    "humid": new_humid,
+                    "max_temp": max_temp,
+                    "max_humid": max_humid,
+                }
                 websocket.SendText(dumps(data))
                 sleep(2)
 
-    send_dht_data()
+    start_new_thread(send_dht_data, ())
 
 
 # Receive command from web visitors
 def _recv_text_callback(websocket, message):
-    print(f"WebSocket received text: {message}")
-
-
-def _recv_binary_callback(websocket, data):
-    print(f"WebSocket received data: {data}")
+    global max_temp, max_humid
+    print(f"WebSocket message: {message}")
+    client_message = loads(message)
+    if "max_temp" in client_message:
+        max_temp = float(client_message["max_temp"])
+        update_min_max = True
+    elif "max_humid" in client_message:
+        max_humid = float(client_message["max_humid"])
+        update_min_max = True
 
 
 def _closed_callback(websocket):
@@ -68,8 +79,7 @@ def _closed_callback(websocket):
 
 # Initiate threads
 start_new_thread(receive_data_socket, ())
-# Initiate web server
-# TCP port 80 and files in /www
+# Initiate web server, TCP port 80 and files in /www
 mws = MicroWebSrv(webPath="/www")
 mws.MaxWebSocketRecvLen = 256
 mws.AcceptWebSocketCallback = _accept_websocket_callback
