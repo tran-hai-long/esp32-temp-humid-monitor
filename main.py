@@ -25,8 +25,8 @@ lcd = I2cLcd(i2c, 0x27, 2, 16)
 # Initiate buzzer
 buzzer = PWM(Pin(4))
 # Initiate RGB LED bulbs
-led_temp = [PWM(Pin(26)), PWM(Pin(25)), PWM(Pin(33))]
-led_humid = [PWM(Pin(12)), PWM(Pin(14)), PWM(Pin(27))]
+led_temp = [PWM(Pin(12)), PWM(Pin(14)), PWM(Pin(27))]
+led_humid = [PWM(Pin(26)), PWM(Pin(25)), PWM(Pin(33))]
 
 
 # Read DHT22 sensor values
@@ -96,20 +96,20 @@ def update_sensors():
             play_tone(400)
         else:
             be_quiet()
-        temp_percentage = new_temp / max_temp
-        humid_percentage = new_humid / max_humid
+        temp_percentage = (new_temp - min_temp) / (max_temp - min_temp)
+        humid_percentage = (new_humid - min_humid) / (max_humid - min_humid)
         # clamp led color values in (0, 65535) range
         set_led_color(
             led_temp,
-            max(min(65535 * temp_percentage, 65535), 0),
-            max(min(65535 * (1 - temp_percentage), 65535), 0),
+            max(min(int(65535 * temp_percentage), 65535), 0),
+            max(min(int(65535 * (1 - temp_percentage)), 65535), 0),
             0,
         )
         set_led_color(
             led_humid,
             0,
-            max(min(65535 * (1 - humid_percentage), 65535), 0),
-            max(min(65535 * humid_percentage, 65535), 0),
+            max(min(int(65535 * (1 - humid_percentage)), 65535), 0),
+            max(min(int(65535 * humid_percentage), 65535), 0),
         )
         sleep(3)
 
@@ -130,6 +130,8 @@ def send_data_mqtt():
 
 # Initiate threads
 be_quiet()
+set_led_color(led_temp, 0, 0, 0)
+set_led_color(led_humid, 0, 0, 0)
 start_new_thread(update_sensors, ())
 start_new_thread(send_data_socket, ())
 start_new_thread(send_data_mqtt, ())
