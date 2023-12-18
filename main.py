@@ -1,8 +1,10 @@
 from _thread import start_new_thread
-from microWebSrv import MicroWebSrv
-from time import sleep
 from json import dumps, loads
 from socket import socket, AF_INET, SOCK_STREAM
+from time import sleep
+
+from microWebSrv import MicroWebSrv
+
 
 # Set up variables
 prev_temp = 1
@@ -11,6 +13,7 @@ prev_humid = 0
 new_humid = 0
 
 
+# Receive sensor data from ESP32_client
 def receive_data_socket():
     global prev_temp, new_temp, prev_humid, new_humid
     sock = socket(AF_INET, SOCK_STREAM)
@@ -24,7 +27,7 @@ def receive_data_socket():
     print(f"Accepted connection from {client_address[0]}:{client_address[1]}")
     # receive data from the client
     while True:
-        request = client_socket.recv(256)
+        request = client_socket.recv(128)
         request = request.decode("utf-8")
         data = loads(request)
         prev_temp = new_temp
@@ -36,8 +39,6 @@ def receive_data_socket():
 # websocket methods
 def _accept_websocket_callback(websocket, httpClient):
     print("WebSocket accepted")
-    websocket.RecvTextCallback = _recv_text_callback
-    websocket.RecvBinaryCallback = _recv_binary_callback
     websocket.ClosedCallback = _closed_callback
 
     # Send temperature and humidity data to web visitors
@@ -48,16 +49,7 @@ def _accept_websocket_callback(websocket, httpClient):
                 websocket.SendText(dumps(data))
             sleep(2)
 
-    start_new_thread(send_dht_data(), ())
-
-
-# Receive command from web visitors
-def _recv_text_callback(websocket, message):
-    print(f"WebSocket received text: {message}")
-
-
-def _recv_binary_callback(websocket, data):
-    print(f"WebSocket received data: {data}")
+    send_dht_data()
 
 
 def _closed_callback(websocket):

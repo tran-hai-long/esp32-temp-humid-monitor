@@ -18,10 +18,10 @@
         }
     </style>
     <script>
-        let Socket;
+        let socket;
         function init() {
-            Socket = new WebSocket('ws://' + window.location.hostname + ':80/');
-            Socket.onmessage = function (event) {
+            socket = new WebSocket('ws://' + window.location.hostname + ':80/');
+            socket.onmessage = function (event) {
                 processCommand(event);
             };
         }
