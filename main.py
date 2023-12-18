@@ -13,15 +13,17 @@ prev_temp = 1
 new_temp = 1
 prev_humid = 0
 new_humid = 0
+min_temp = 0
 max_temp = 40
-max_humid = 50
+min_humid = 0
+max_humid = 80
 # Initiate DHT22
 dht22 = DHT22(Pin(32))
 # Initiate LCD
 i2c = SoftI2C(scl=Pin(22), sda=Pin(21), freq=10000)
 lcd = I2cLcd(i2c, 0x27, 2, 16)
 # Initiate buzzer
-# buzzer = PWM(Pin(4))
+buzzer = PWM(Pin(4))
 # Initiate RGB LED bulbs
 led_temp = [PWM(Pin(26)), PWM(Pin(25)), PWM(Pin(33))]
 led_humid = [PWM(Pin(12)), PWM(Pin(14)), PWM(Pin(27))]
@@ -48,15 +50,15 @@ def set_led_color(led, red, green, blue):
     led[2].duty_u16(int(blue))
 
 
-# # Make buzzer play a tone
-# def play_tone(frequency):
-#     buzzer.duty_u16(1000)
-#     buzzer.freq(frequency)
+# Make buzzer play a tone
+def play_tone(frequency):
+    buzzer.duty_u16(1000)
+    buzzer.freq(frequency)
 
 
-# # Stop buzzer
-# def be_quiet():
-#     buzzer.duty_u16(0)
+# Stop buzzer
+def be_quiet():
+    buzzer.duty_u16(0)
 
 
 def send_data_socket():
@@ -84,14 +86,16 @@ def update_sensors():
             print("Can not read DHT22")
         if new_temp != prev_temp or new_humid != prev_humid:
             start_new_thread(print_lcd, (f"{new_temp}'C\n{new_humid} %",))
-        # if new_temp > max_temp and new_humid > max_humid:
-        #     play_tone(1000)
-        # elif new_temp > max_temp:
-        #     play_tone(700)
-        # elif new_humid > max_humid:
-        #     play_tone(400)
-        # else:
-        #     be_quiet()
+        if (new_temp > max_temp or new_temp < min_temp) and (
+            new_humid > max_humid or new_humid < min_humid
+        ):
+            play_tone(1000)
+        elif new_temp > max_temp or new_temp < min_temp:
+            play_tone(700)
+        elif new_humid > max_humid or new_humid < min_humid:
+            play_tone(400)
+        else:
+            be_quiet()
         temp_percentage = new_temp / max_temp
         humid_percentage = new_humid / max_humid
         # clamp led color values in (0, 65535) range
@@ -125,7 +129,7 @@ def send_data_mqtt():
 
 
 # Initiate threads
-# be_quiet()
+be_quiet()
 start_new_thread(update_sensors, ())
 start_new_thread(send_data_socket, ())
 start_new_thread(send_data_mqtt, ())
