@@ -3,10 +3,12 @@ from dht import DHT22
 from json import dumps
 from i2c_lcd import I2cLcd
 from lcd_api import LcdApi
-from machine import PWM, Pin, SoftI2C
+from machine import PWM, Pin, SoftI2C, idle
 from time import sleep
 from socket import socket, AF_INET, SOCK_STREAM
 from umqtt.simple import MQTTClient
+from BlynkLib import Blynk
+
 
 # Set up variables
 prev_temp = 1
@@ -63,7 +65,7 @@ def be_quiet():
 
 def send_data_socket():
     sock = socket(AF_INET, SOCK_STREAM)
-    server_ip = "192.168.92.91"
+    server_ip = "192.168.237.91"
     server_port = 9999
     sock.connect((server_ip, server_port))
     while True:
@@ -85,7 +87,7 @@ def update_sensors():
         except:
             print("Can not read DHT22")
         if new_temp != prev_temp or new_humid != prev_humid:
-            start_new_thread(print_lcd, (f"{new_temp}'C\n{new_humid} %",))
+            print_lcd(f"{new_temp}'C\n{new_humid} %")
         if (new_temp > max_temp or new_temp < min_temp) and (
             new_humid > max_humid or new_humid < min_humid
         ):
@@ -111,7 +113,7 @@ def update_sensors():
             max(min(int(65535 * (1 - humid_percentage)), 65535), 0),
             max(min(int(65535 * humid_percentage), 65535), 0),
         )
-        sleep(3)
+        sleep(2)
 
 
 # Method for sending sensor data to MQTT server regularly
@@ -122,10 +124,51 @@ def send_data_mqtt():
     while True:
         sleep(10)
         try:
-            client.publish(b"iot_group7_temp", bytes(str(new_temp), "utf-8"))
-            client.publish(b"iot_group7_humid", bytes(str(new_humid), "utf-8"))
+            client.publish(b"/iot/group7/temp", bytes(str(new_temp), "utf-8"))
+            client.publish(b"/iot/group7/hum", bytes(str(new_humid), "utf-8"))
         except:
             print("Can not send data to MQTT server")
+
+
+def run_blynk():
+    blynk = Blynk("blynk_api_key")
+
+    @blynk.on("connected")
+    def blynk_connected(ping):
+        print("Blynk ready. Ping:", ping, "ms")
+
+    @blynk.on("disconnected")
+    def blynk_disconnected():
+        print("Blynk disconnected")
+
+    # Register virtual pin handler
+    @blynk.on("V0")
+    def v0_write_handler(value):
+        global min_temp
+        print("Min temp: {}".format(value[0]))
+        min_temp = float(value[0])
+
+    @blynk.on("V1")
+    def v1_write_handler(value):
+        global max_temp
+        print("Max temp: {}".format(value[0]))
+        max_temp = float(value[0])
+
+    @blynk.on("V2")
+    def v2_write_handler(value):
+        global min_humid
+        print("Min humid: {}".format(value[0]))
+        min_humid = float(value[0])
+
+    @blynk.on("V3")
+    def v3_write_handler(value):
+        global max_humid
+        print("Max humid: {}".format(value[0]))
+        max_humid = float(value[0])
+
+    while True:
+        blynk.run()
+        idle()
 
 
 # Initiate threads
@@ -135,3 +178,4 @@ set_led_color(led_humid, 0, 0, 0)
 start_new_thread(update_sensors, ())
 start_new_thread(send_data_socket, ())
 start_new_thread(send_data_mqtt, ())
+start_new_thread(run_blynk, ())
